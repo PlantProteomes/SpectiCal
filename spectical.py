@@ -883,7 +883,7 @@ class MSRunPeakFinder:
             self.ax[0][1].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
             self.ax[0][1].set(xlabel='m/z', ylabel='PPM')
     
-            self.ax[2][1].scatter(self.refined_mz_values, self.refined_delta_ppm_values, 0.5)
+            self.ax[2][1].scatter(mz_values, delta_values_ppm, 0.5)
             self.ax[2][1].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
             self.ax[2][1].set(xlabel='m/z', ylabel='PPM')
             plt.tight_layout()
