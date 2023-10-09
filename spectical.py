@@ -36,7 +36,7 @@ class MSRunPeakFinder:
         self.file_name = file
         self.make_pdf = make_pdf
         self.find_snippets = find_snippets and make_pdf
-
+    
         # Declares all of the variables
         self.by_count = np.zeros((4000000,), dtype=int)
         self.by_intensity = np.zeros((4000000,), dtype=float)
@@ -59,14 +59,14 @@ class MSRunPeakFinder:
         self.after_400_calibration = 0
         self.has_correction_spline = False
         self.has_second_spline = False
-
+    
         if self.file_name.endswith('.gz'):
             self.infile = gzip.open(self.file_name)
             self.peak_file = self.file_name[0:len(self.file_name) - 8]
         else:
             self.infile = open(self.file_name, 'rb')
             self.peak_file = self.file_name[0:len(self.file_name) - 5]
-
+    
     def process_file(self):
         last_time = self.t0
         # find the intensity of each m/z value
@@ -115,7 +115,7 @@ class MSRunPeakFinder:
             self.plot_all_corrections()
             print(str(timeit.default_timer() - last_time) + " seconds to plot all summary plots")
             last_time = timeit.default_timer()
-
+    
         # following is code to write outputs - consider putting this in its own method
         if self.find_snippets:
             self.analyze_snippets() # skipping analyzing snippets for now, to add back, uncomment 158
@@ -129,16 +129,16 @@ class MSRunPeakFinder:
         self.write_json()
         # print out data, including run time, number of peaks found, etc
         return self.show_stats()
-
+    
     def aggregate_spectra(self):
         print("starting to aggregate spectra")
-
+    
         with mzml.read(self.infile) as reader:
             for spectrum in reader:
-
+    
                 #### Update counters and print progress
                 self.stats['counter'] += 1
-
+    
                 # Populates array with each mz based on count (number of times it appears), intensity
                 # (summation of all intensities of the respective mz), and strength (summation of the strength
                 # of the intensities, from a scale of 1-4)
@@ -164,10 +164,10 @@ class MSRunPeakFinder:
                             self.by_count[int(10000 * peak_mz + 0.5)] += 1
                             self.by_intensity[int(10000 * peak_mz + 0.5)] += intensity
                             self.smallest_peak_intensity = min(self.smallest_peak_intensity, intensity)
-
+    
                     if self.find_snippets and upper_index != 0 and upper_index > lower_index:
                         self.scan_snippets.append([self.stats['counter'], spectrum['m/z array'][lower_index:upper_index], spectrum['intensity array'][lower_index:upper_index]])
-
+    
                     # Compare the intensity to the smallest intensity, returning the strength of the intensity
                     # on a scale from 1-4
                     for index in range(len(spectrum['m/z array'])):
@@ -177,16 +177,16 @@ class MSRunPeakFinder:
                         else:
                             intensity = spectrum['intensity array'][index]
                             self.by_strength[int(10000 * peak_mz + 0.5)] += get_strength(intensity, self.smallest_peak_intensity)
-
+    
                 # Updates terminal with the progress of reading peaks
                 if self.stats['counter']/1000 == int(self.stats['counter']/1000):
                     print(f"  {self.stats['counter']}")
-
+    
         # print(self.scan_snippets)
-
+    
     def get_theoretical_ions(self):
         print("starting to get explanations")
-
+    
         # Populates an array of arrays with a list of theoretical ions with the name, mass, and a boolean
         # value. The boolean value tracks if the theoretical ion has already been identified, which prevents
         # duplicate identifications
@@ -198,15 +198,15 @@ class MSRunPeakFinder:
             'M[Acetyl]': {'mz': 42.010565, 'amino acid': 'M'},
             'L[Acetyl]': {'mz': 42.010565, 'amino acid': 'L'}
         }
-
+    
         # for amino_acid in amino_acids: # considers Acetylation
             # amino_acid_modifications[f'{amino_acid}[Acetyl]'] = {'mz': 42.010565, 'amino acid': amino_acid}
-
+    
         for key in amino_acid_modifications:
             amino_acids.append(key)
-
+    
         amino_acids.sort()
-
+    
         # Considers losses for certain ion types
         aa_immonium_losses = {
                 'G': [],
@@ -231,7 +231,7 @@ class MSRunPeakFinder:
                 'W': [ '+CO', '-C4H6N2', '-C2H4N', '-CH3N', '-CHN', '+CO-NH3', '-NH3' ],
             }
         modification_deltas = {}
-
+    
         # Calculatse the additional deltas from possible explanations in aa_immonium_losses and
         # turns formula into numbers
         for modification in aa_immonium_losses:
@@ -259,7 +259,7 @@ class MSRunPeakFinder:
                     else:
                         acid_base = acid[0]
                     base_acid_mz = mass.calculate_mass(sequence=acid_base, ion_type=ion, charge=1) + amino_acid_modifications[acid]['mz']
-
+    
                 # Adds possible modifications, but only for a ions
                 if ion == 'a':
                     # Add base a ion
@@ -274,9 +274,9 @@ class MSRunPeakFinder:
                         self.known_ions[f"I{acid}{modification}+i"] = [acid_mz + self.isotope_mass, False]
                 # add b and y ions
                 else:
-                    self.known_ions[f"{ion}({acid})"] = [base_acid_mz, False]
-                    self.known_ions[f"{ion}({acid})+i"] = [base_acid_mz + self.isotope_mass, False]
-
+                    self.known_ions[f"{ion}{{{acid}}}"] = [base_acid_mz, False]
+                    self.known_ions[f"{ion}{{{acid}}}+i"] = [base_acid_mz + self.isotope_mass, False]
+    
         # Double nested for loops to identify pairs of amino acids (i.e. A and A)
         # First amino acid
         for identifier_index_1 in range(len(amino_acids)):
@@ -309,16 +309,16 @@ class MSRunPeakFinder:
                     
                     # Add two amino acids together
                     pair_mz = pair_mz_1 + pair_mz_2
-                    self.known_ions [f"{ion}({pair_acid_1}{pair_acid_2})"]  = [pair_mz, False]
+                    self.known_ions [f"{ion}{{{pair_acid_1}{pair_acid_2}}}"]  = [pair_mz, False]
                     # Considers isotope
-                    self.known_ions [f"{ion}({pair_acid_1}{pair_acid_2})+i"] = [pair_mz + self.isotope_mass, False]
-
+                    self.known_ions [f"{ion}{{{pair_acid_1}{pair_acid_2}}}+i"] = [pair_mz + self.isotope_mass, False]
+    
                     # considers doubly charged ions
                     # pair_mz = (pair_mz + self.proton_mass) / 2
                     # self.known_ions [f"{ion}({pair_acid_1}{pair_acid_2})^2"]  = [pair_mz, False]
                     # considers isotope + doubly charged ions
                     # self.known_ions [f"{ion}({pair_acid_1}{pair_acid_2})+i^2"]  = [pair_mz + (self.isotope_mass / 2), False]
-
+    
         # Triple nested for loops to identify trios of amino acids (i.e. A and A)
         # First amino acid
         for identifier_index_1 in range(len(amino_acids)):
@@ -362,21 +362,21 @@ class MSRunPeakFinder:
                             else:
                                 trio_3_acid_base = trio_acid_3[0]
                             trio_mz_3 = amino_acid_modifications[trio_acid_3]['mz'] + mass.calculate_mass(sequence=trio_3_acid_base, ion_type='b', charge=0)
-
+    
                         # Adds all 3 together
                         trio_mz = trio_mz_1 + trio_mz_2 + trio_mz_3
                         if trio_mz <= 400:
-                            self.known_ions[f"{ion}({trio_acid_1}{trio_acid_2}{trio_acid_3})"] = [trio_mz, False]
+                            self.known_ions[f"{ion}{{{trio_acid_1}{trio_acid_2}{trio_acid_3}}}"] = [trio_mz, False]
                             # considers isotope
-                            self.known_ions[f"{ion}({trio_acid_1}{trio_acid_2}{trio_acid_3})+i"] = [trio_mz + self.isotope_mass, False]
-
+                            self.known_ions[f"{ion}{{{trio_acid_1}{trio_acid_2}{trio_acid_3}}}+i"] = [trio_mz + self.isotope_mass, False]
+    
                         # considers doubly charged ions
                         # trio_mz = (trio_mz + self.proton_mass) / 2
                         # if trio_mz <= 400:
                             # self.known_ions[f"{ion}({trio_acid_1}{trio_acid_2}{trio_acid_3})^2"] = [trio_mz, False]
                             # considers isotope
                             # self.known_ions[f"{ion}({trio_acid_1}{trio_acid_2}{trio_acid_3})+i^2"] = [trio_mz + (self.isotope_mass / 2), False]
-
+    
         # Consider water and ammonia losses. This does not account for duplicates yet!!
         water = mass.calculate_mass(formula='H2O')
         ammonia = mass.calculate_mass(formula='NH3')
@@ -403,10 +403,10 @@ class MSRunPeakFinder:
                 additional_explanations[self.simplify_explanation(key + '-H2O-NH3') + add_on] = [self.known_ions[key][0] - water_ammonia, False]
                 if key[0] == 'a' or key[0] == 'b' or 'K' in key:
                     additional_explanations[key + '+TMT'] = [self.known_ions[key][0] + 229.162932, False]
-
+    
         for key in additional_explanations:
             self.known_ions[key] = additional_explanations[key].copy()
-
+    
         # Adds other known theoretical ions with the formula
         # Change to a list of the formulas and change the + self.proton_mass to - self.electron_mass (0.000548), chemical formula is the
         # same. Convention is proton is around the same as a hydrogen, loop through the list and add what I need to add
@@ -482,13 +482,14 @@ class MSRunPeakFinder:
             'C6H4N5O3',
             'C6H4N5O4',
             'C6H6N5O4',
-            'C4N11O2'
+            'C4N11O2',
+            "H4PO4"
         ]
-
+    
         for formula in additional_explanations:
             self.known_ions[formula] = [mass.calculate_mass(formula=f"{formula}") - self.electron_mass, False]
             # print(self.known_ions[formula])
-
+    
         self.known_ions["TMT126"] = [126.127726, False]
         self.known_ions["TMT127N"] = [127.124761, False]
         self.known_ions["TMT127C"] = [127.131081, False]
@@ -508,10 +509,10 @@ class MSRunPeakFinder:
         self.known_ions["TMT134C"] = [134.154565, False]
         self.known_ions["TMT135N"] = [135.151600, False]
         self.known_ions["TMT6Nterm"] = [229.162932 + self.proton_mass, False]
-
+    
         for key in self.known_ions:
             self.known_ions[key][0] = round(self.known_ions[key][0], 5)
-
+    
     def simplify_explanation(self, explanation):
         # This takes a string and splits it into the + and -, reducing any redundancies
         # i.e. IE+H2O-H2O -> IE
@@ -522,20 +523,20 @@ class MSRunPeakFinder:
             losses = match.group(2)
                 
         match = re.findall(r'([+-][A-Z\d]+)', losses)
-
+    
         if match:
             additions = []
             subtractions = []
-
+    
             for modification in match:
                 if modification[0] == "+":
                     additions.append(modification[1:])
                 else:
                     subtractions.append(modification[1:])
-
+    
             additions.sort()
             subtractions.sort()
-
+    
             removed = 0
             for add_index in range(len(additions)):
                 for subtract_index in range(len(subtractions)):
@@ -546,17 +547,17 @@ class MSRunPeakFinder:
                         break
         
             condensed_acid = ions
-
+    
             for add_modification in additions:
                 condensed_acid += "+" + add_modification
-
+    
             for subtract_modification in subtractions:
                 condensed_acid += "-" + subtract_modification
         else:
             condensed_acid = explanation
-
+    
         return condensed_acid
-
+    
     def determine_crude_correction(self):
         # Uses popular possible explanations so in the first run through, it looks for the most 
         # intense peak within 20 PPM of each popular possible explanation. Then, it calculates the
@@ -572,44 +573,44 @@ class MSRunPeakFinder:
             'IM': 104.05285,
             'IH': 110.07127,
             'IR-NH3': 112.08692,
-            'a(AA)': 115.08659,
+            'a{{AA}}': 115.08659,
             'IR+H2O+H2O-N3H7': 116.0706,
             'IF': 120.08078,
-            'b(AA)-NH3': 126.05495,
+            'b{{AA}}-NH3': 126.05495,
             'IQ+CO': 129.06585,
             'IK+CO+H2O-NH3': 130.08625,
             'IC[Carbamidomethyl]': 133.04301,
             'IY': 136.07569,
-            'a(AP)': 141.10224,
-            'b(AA)': 143.0815,
-            'a(AV)': 143.11789,
-            'b(GP)': 155.0815,
+            'a{{AP}}': 141.10224,
+            'b{{AA}}': 143.0815,
+            'a{{AV}}': 143.11789,
+            'b{{GP}}': 155.0815,
             'IK+CO+H2ON2-NH3': 158.0924,
             'IW': 159.09167,
-            'a(DP)-H2O': 167.0815,
-            'b(AP)': 169.09715,
-            'a(PV)': 169.13354,
-            'a(PT)': 171.1128,
-            'a(TV)': 173.12845,
-            'y(R)': 175.11895,
-            'a(LP)': 183.14919,
-            'b(PS)': 185.09207,
-            'b(PV)': 197.12845,
-            'a(DL)': 201.12337,
-            'a(AY)': 207.11281,
-            'y(AH)-H2O': 209.10331,
-            'a(EL)': 215.13902,
-            'b(EL)-H2O': 225.12337,
-            'a(APS)': 228.13427,
-            'b(DL)': 229.11828,
-            'y(HV)-H2O': 237.1346,
-            'a(APT)': 242.14992,
-            'b(DQ)': 244.0928,
-            'y(KP)': 244.16557,
-            'y(HV)': 255.14517,
-            'y(PR)': 272.17172
+            'a{{DP}}-H2O': 167.0815,
+            'b{{AP}}': 169.09715,
+            'a{{PV}}': 169.13354,
+            'a{{PT}}': 171.1128,
+            'a{{TV}}': 173.12845,
+            'y{{R}}': 175.11895,
+            'a{{LP}}': 183.14919,
+            'b{{PS}}': 185.09207,
+            'b{{PV}}': 197.12845,
+            'a{{DL}}': 201.12337,
+            'a{{AY}}': 207.11281,
+            'y{{AH}}-H2O': 209.10331,
+            'a{{EL}}': 215.13902,
+            'b{{EL}}-H2O': 225.12337,
+            'a{{APS}}': 228.13427,
+            'b{{DL}}': 229.11828,
+            'y{{HV}}-H2O': 237.1346,
+            'a{{APT}}': 242.14992,
+            'b{{DQ}}': 244.0928,
+            'y{{KP}}': 244.16557,
+            'y{{HV}}': 255.14517,
+            'y{{PR}}': 272.17172
         }
-
+    
         self.crude_xy_scatterplot = []
         first_pass_ppms = []
         for key in first_pass_peaks:
@@ -629,21 +630,21 @@ class MSRunPeakFinder:
                 self.crude_xy_scatterplot.append(best_match)
                 first_pass_ppms.append(best_match[2])
             # print(f"time to identify {key}: {start_time - timeit.default_timer()}")
-
+    
         # Crude correction is the median of all the delta values between the theoretical mz and
         # measured mz value
         self.crude_correction = np.median(first_pass_ppms)
-
+    
     def increase_initial_tolerance(self):
         self.initial_tolerance = 30
-
+    
     def lower_minimum_triggers(self):
         # If not enough peaks were over the minimum trigger limit, it lowers the minimum triggers by 15
         self.minimum_triggers = self.minimum_triggers - 15
-
+    
     def find_initial_triggers(self):
         print("starting search for initial triggers")
-
+    
         # Scans through peaks to find all peaks with over the minimum triggers value
         # If it is over the minimum triggers value (which compares it to the total strength of the peak),
         # it will add it to triggered peaks
@@ -663,10 +664,10 @@ class MSRunPeakFinder:
                     self.triggered_peaks.append(previous_peak)
                 counted = False
                 previous_peak = [0, 0]
-
+    
     def refine_triggered_peaks(self):
         print("starting to refine triggered peaks")
-
+    
         # Refines the peaks by using a gaussian fit on each triggered peak. If the peaks fit centers
         # are within 5 PPM, then the two peaks are considered the same peak. This removes duplicates
         for peak in self.triggered_peaks:
@@ -701,20 +702,20 @@ class MSRunPeakFinder:
             mz_values.append(add_index / 10000 - peak[0])
             ppm_values.append((add_index / 10000 - peak[0]) * 1e6 / peak[0])
             intensity_values.append(self.by_strength[add_index])
-
+    
         n = len(ppm_values)
         center = int(n/2)
         binsize = ppm_values[center]-ppm_values[center-1]
-
+    
         try:
         #if 1:
             popt,pcov = curve_fit(gaussian_function,ppm_values,intensity_values,p0=[intensity_values[center],ppm_values[center],binsize])
         except:
             return [0, 0]
-
+    
         peak_mz = round((peak[0] + (popt[1] * peak[0] / 1e6)), 5)
         return [peak_mz, round(popt[0], 1)]
-
+    
     def binned(self):
         binned_known_ions = [ [] for i in range(4001) ]
         for key in self.known_ions:
@@ -723,14 +724,14 @@ class MSRunPeakFinder:
                 binned_known_ions[bin].append([key, self.known_ions[key][0], False])
         
         return binned_known_ions
-
+    
     def identify_peaks(self):
         print("starting to identify peaks")
         # This uses the observed peaks and sees how many of them can be identified. It accounts for any
         # corrections applicable
-
+    
         binned_known_ions = self.binned()
-
+    
         # Creates an array with a spline correction for each observed peak
         if self.has_correction_spline:
             mz_values = []
@@ -748,20 +749,20 @@ class MSRunPeakFinder:
             # applies the corrections
             peak = self.observed_peaks[index].copy()
             crude_correction_mz = self.crude_correction * peak[0] / 1e6
-
+    
             if self.has_correction_spline:
                 spline_correction_mz = y_values[index] * peak[0] / 1e6
             else:
                 spline_correction_mz = 0
-
+    
             peak[0] -= (crude_correction_mz + spline_correction_mz)
             self.observed_peaks[index] = self.observed_peaks[index][0:2]
-
+    
             if peak[0] <= 150:
                 peak_tolerance = self.tolerance_150 * peak[0] / 1e6
             else:
                 peak_tolerance = self.tolerance * peak[0] / 1e6
-
+    
             for known_ion_index in range(len(binned_known_ions[int(peak[0] * 10)])):
                 possible_explanation = binned_known_ions[int(peak[0] * 10)][known_ion_index]
                 amino_acid_mz = possible_explanation[1]
@@ -770,20 +771,20 @@ class MSRunPeakFinder:
                     identified_peak = [round(amino_acid_mz, 5), round(peak[0] - amino_acid_mz, 8), amino_acid]
                     identifications.append(identified_peak)
                     binned_known_ions[int(peak[0] * 10)][known_ion_index][2] = True
-
+    
             # Sorts the identifications for each peak so the closest identifications are at the front
             identifications.sort(key = lambda x: len(x[2]))
             identifications.sort(key = lambda x: abs(x[1]))
             for identification in identifications:
                 self.observed_peaks[index].append(identification)
-
+    
     def update_refined(self, crude_correction, t, c, k):
         mz_values = []
         for peak in self.refined_mz_values:
             mz_values.append(peak)
         x_values = np.array(mz_values)
         y_values = interpolate.BSpline(t, c, k)(x_values)
-
+    
         removed = 0
         for index in range(len(self.refined_delta_ppm_values)):
             if abs(self.refined_delta_ppm_values[index - removed] - y_values[index] - crude_correction) > 10:
@@ -794,7 +795,7 @@ class MSRunPeakFinder:
                 mz = self.refined_mz_values[index - removed]
                 self.refined_mz_values[index - removed] -= (crude_correction + y_values[index]) * mz / 1e6
                 self.refined_delta_ppm_values[index - removed] -= (y_values[index] + crude_correction)
-
+    
     def keep_intense_remove_outliers(self, mz_values, delta_ppm_values):
         print("starting to remove outliers")
         # Creates a new variable to store a set of refined peaks, only keeping the most intense peaks in
@@ -812,7 +813,7 @@ class MSRunPeakFinder:
                 if len(xy_range) != 1:
                     top_peak = int(self.top_peaks * len(mz_values) + 0.5) + 1
                     xy_range = xy_range[0:top_peak]
-
+    
                 xy_range.sort(key = lambda x: x[2])
                 length = len(xy_range)
                 i = 1 / length
@@ -834,14 +835,14 @@ class MSRunPeakFinder:
         
         for key in removable_index:
             xy.pop(key)
-
+    
         # Creates the new array with mz values and delta ppm values
         self.refined_mz_values = []
         self.refined_delta_ppm_values = []
         for key in xy:
             self.refined_mz_values.append(key)
             self.refined_delta_ppm_values.append(xy[key])
-
+    
     def plot_crude_calibrations(self):
         print("starting to plot scatterplots")
         # Plots the top left graph, which is the PPM (difference between theoretical ion masses and the
@@ -859,7 +860,7 @@ class MSRunPeakFinder:
         self.ax[0][0].text(min(peak_mz), 0, f'tolerance: {self.initial_tolerance} ppm', fontsize='xx-small', ha='left', va='top')
         self.ax[0][0].set(xlabel='m/z', ylabel='PPM')
         plt.tight_layout()
-
+    
     def delta_scatterplots(self):
         # Plots the identified peaks PPM vs the m/z without any corrections applied. The crude calibration
         # is plotted as a dashed line
@@ -881,12 +882,12 @@ class MSRunPeakFinder:
             self.ax[0][1].text(315, self.crude_correction + 0.1, f'crude_correction: {round(self.crude_correction, 2)} ppm', fontsize='xx-small', ha='right', va='bottom')
             self.ax[0][1].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
             self.ax[0][1].set(xlabel='m/z', ylabel='PPM')
-
+    
             self.ax[2][1].scatter(self.refined_mz_values, self.refined_delta_ppm_values, 0.5)
             self.ax[2][1].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
             self.ax[2][1].set(xlabel='m/z', ylabel='PPM')
             plt.tight_layout()
-
+    
     def find_first_spline(self):
         # Calculates the artificial peak point for the after 400 calibration constant
         mz_values = []
@@ -909,10 +910,10 @@ class MSRunPeakFinder:
         if self.make_pdf:
             self.ax[1][0].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
             self.ax[1][0].set(xlabel='m/z', ylabel='PPM')
-
+    
         # Adds artificial peaks above 500 with the median between 300 and 400 so the spline 
         # fit will flatten out, making the correction applicable for points above 400 if necessary
-
+    
         if len(mz_values) <= 5:
             print("There are too little data points to create a spline fit.")
             self.ax[1,0].set_title("There are too little data points to create a spline fit", fontsize="xx-small")
@@ -932,7 +933,7 @@ class MSRunPeakFinder:
                     index += index_increment
                     mz_values.append(index)
                     delta_values_ppm.append(artificial_peak_intensity)
-
+    
                 x_new = np.linspace(0, 1, 5)[1:-1] # 5 = 3 knots + 2
                 x_new.sort()
                 q_knots = np.quantile(mz_values, x_new)
@@ -948,20 +949,20 @@ class MSRunPeakFinder:
             self.ax[1][0].scatter(mz_values, delta_values_ppm, 0.5)
             plt.tight_layout()
             plt.close()
-
+    
     def find_second_spline(self):
         # This calculates the coefficients for the second spline fit and plots the delta scatterplot
         # of just the first spline fit applied, with the second spline fit overlayed
         mz_values = self.refined_mz_values.copy()
         delta_values_ppm = self.refined_delta_ppm_values.copy()
-
+    
         # extend out the line for the spline
         artificial_peak_range = []
         for index in range(len(mz_values)):
             peak = [mz_values[index], delta_values_ppm[index]]
             if peak[0] >= 300 and peak[0] <= 400:
                 artificial_peak_range.append(peak[1]) 
-
+    
         self.after_400_calibration += np.median(artificial_peak_range)
         
         # create the spline
@@ -987,7 +988,7 @@ class MSRunPeakFinder:
                     index += index_increment
                     mz_values.append(index)
                     delta_values_ppm.append(artificial_peak_intensity)
-
+    
                 # Plotting spline fit
                 x_new = np.linspace(0, 1, 7)[1:-1] # 7 = 5 knots + 2
                 x_new.sort()
@@ -1008,7 +1009,7 @@ class MSRunPeakFinder:
                 self.ax[1][1].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
                 self.ax[1][1].set(xlabel='m/z', ylabel='PPM')
             self.update_refined(0, self.t2, self.c2, self.k2)
-
+    
     def plot_corrected_scatterplot(self):
         # This plots the fifth graph, with both spline corrections and the crude correction applied
         # Most of the points should be around the 0 horizontal line, which indicates the corrections
@@ -1016,7 +1017,7 @@ class MSRunPeakFinder:
         self.ax[2][0].scatter(self.refined_mz_values, self.refined_delta_ppm_values, 0.5)
         self.ax[2][0].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
         self.ax[2][0].set(xlabel='m/z', ylabel='PPM')
-
+    
     def plot_all_corrections(self):
         x_values = np.arange(self.refined_mz_values[0], self.refined_mz_values[-1])
         
@@ -1034,7 +1035,7 @@ class MSRunPeakFinder:
         self.fig.subplots_adjust(top=0.96, bottom=0.10, left=0.10, right=0.96, hspace=0.2, wspace=0.2)
         plt.tight_layout()
         self.pdf.savefig(self.fig)
-
+    
     def analyze_snippets(self):
         print("starting to analyze snippets")
         # Send a message if the plots cannot be created
@@ -1044,12 +1045,12 @@ class MSRunPeakFinder:
         
         acid_mz = {'IH': 110.07127, 'IF': 120.08078, 'IK-CO': 129.10223}
         close_matches = []
-
+    
         # Creates enough elements to store all the scan numbers, delta PPM, and intensities in one
         # array per acid. The first element is the acid, the rest are the stored values
         for key in acid_mz:
             close_matches.append([key])
-
+    
         # Goes through each snippet
         for snippet in self.scan_snippets:
             closest_PPM_and_logged_intensity = []
@@ -1067,7 +1068,7 @@ class MSRunPeakFinder:
                 # is the range of respective intensities
                 for index_snippet_mz in range(len(snippet[1])):
                     snippet_mz = snippet[1][index_snippet_mz]
-
+    
                     # Applies calibration before the tolerance is checked
                     correction_mz = self.crude_correction * snippet_mz / 1e6
             
@@ -1075,7 +1076,7 @@ class MSRunPeakFinder:
                         y_values = interpolate.BSpline(self.t, self.c, self.k)([snippet_mz])
                         correction_mz += y_values[0] * snippet_mz / 1e6
                     snippet_mz -= correction_mz
-
+    
                     if snippet_mz > lower_bound and snippet_mz < upper_bound:
                         if snippet[2][index_snippet_mz] > largest_intensity:
                             largest_intensity = snippet[2][index_snippet_mz]
@@ -1098,7 +1099,7 @@ class MSRunPeakFinder:
                     closest_PPM_and_logged_intensity.append([(observed_mz - mz - correction_mz) * 1e6 / mz, math.log(largest_intensity)])
                 else:
                     closest_PPM_and_logged_intensity.append([0, 0])
-
+    
             # rework naming convention!
             # Adds the scan number, delta PPM, and intensity to the respective array so it is ready to be
             # plotted later.
@@ -1106,20 +1107,20 @@ class MSRunPeakFinder:
                 possible_acid = closest_PPM_and_logged_intensity[index]
                 if possible_acid[1] != 0:
                     close_matches[index].append([snippet[0], possible_acid[0], possible_acid[1]])
-
+    
         # Creates the subplots for the output
         # It will not have a good output if there are too many acids!! Will need to rework so there are
         # not too many plots on one page
         self.fig, self.ax = plt.subplots(nrows=len(acid_mz), ncols=2, figsize=(8.5, 11))
         self.fig.subplots_adjust(top=0.96, bottom=0.05, left=0.12, right=0.96, hspace=0.2, wspace=0.2)
-
+    
         # Each acid will have its own row, one scatter plot being the scan number vs PPM, the other being
         # the intensity vs PPM to analyze the trends
         for row in range(len(acid_mz)):
             # Sorts the matches by intensity and removes bottom 10%
             sorted_matches = close_matches[row][1:].copy()
             sorted_matches.sort(key = lambda x: x[0]) # sorts sorted_matches by scan number
-
+    
             upper_scan_num = 1000
             intense_sorted_matches = [] # only keeps the intense matches
             sorted_matches_bin = [] # takes all matches between 1-1000, 1001-2000, etc
@@ -1134,7 +1135,7 @@ class MSRunPeakFinder:
                     sorted_matches_bin = []
                 
                 sorted_matches_bin.append(match)
-
+    
             # Extracts arrays of scan numbers, delta PPMs, and logged intensities for plotting
             scan_nums = [item[0] for item in intense_sorted_matches]
             delta_PPMs = [item[1] for item in intense_sorted_matches]
@@ -1153,25 +1154,25 @@ class MSRunPeakFinder:
                     self.ax[row][col].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
                     self.ax[row][col].set(xlabel='logged intensity', ylabel='delta PPM')
                     # self.ax[row,col].set_title(f"{close_matches[row][0]} intensity vs delta PPM", fontsize="xx-small")
-
+    
         # This saves the plots and adds it to the output file
         self.pdf.savefig(self.fig)
-
+    
     def find_peak_percentage(self):
         print("starting to find percentages")
         for index in range(len(self.observed_peaks)):
             peak = self.observed_peaks[index]
             lower_mz = int(peak[0] * 10000 - 50000 * peak[0] / 1e6 + 0.5)
             peak_search_range = int((5 * peak[0] / 1e6) * 20000) + 1
-
+    
             spectra_with_peak = 0
             for mz in range(peak_search_range):
                 if mz + lower_mz >= 4000000:
                     break
                 spectra_with_peak += self.by_count[lower_mz + mz]
-
+    
             self.observed_peaks[index].insert(2, f"{round(spectra_with_peak * 100 / self.stats['ms2spectra'], 1)}%")
-
+    
     def write_json(self):
         print("starting to write json file")
         # This writes out a json file with the crude correction value, the t, c, and k values for the
@@ -1181,34 +1182,34 @@ class MSRunPeakFinder:
             "crude correction": self.crude_correction,
             "after_400_calibration": self.after_400_calibration
         }
-
+    
         if self.has_correction_spline:
             correction_values["t1"] = self.t.tolist()
             correction_values["c1"] = self.c.tolist()
             correction_values["k1"] = self.k
-
+    
         if self.has_second_spline:
             correction_values["t2"] = self.t2.tolist()
             correction_values["c2"] = self.c2.tolist()
             correction_values["k2"] = self.k2
-
+    
         # Serializing json
         json_object = json.dumps(correction_values, indent=4)
         
         # Writing to sample.json
         with open(f"{self.peak_file}.calibration.json", "w") as outfile:
             outfile.write(json_object)
-
+    
     def plot_peaks_strength(self):
         print("starting to plot individual peaks")
         # Prints out individual peak plots, with 15 PPM above and below each observed peak to see the
         # intensity of the mz values around each observed peak
         # There are 15 plots per page
-
+    
         x = 0
         y = 0
         fig, ax = plt.subplots(self.plot_output_rows, self.plot_output_columns, figsize=(8.5,11))
-
+    
         if self.has_correction_spline:
             mz_values = [peak[0] for peak in self.observed_peaks]
             x_values = np.array(mz_values)
@@ -1217,13 +1218,13 @@ class MSRunPeakFinder:
                 y_values_2 = interpolate.BSpline(self.t2, self.c2, self.k2)(x_values)
                 for index in range(len(y_values)):
                     y_values[index] += y_values_2[index]
-
+    
         # Takes the most 300 most intense peaks to print out
         if len(self.observed_peaks) > 300:
             self.observed_peaks.sort(key = lambda x: -1 * x[2])
             self.observed_peaks = self.observed_peaks[0:300]
             self.observed_peaks.sort(key = lambda x: x[0])
-
+    
         for index in range(len(self.observed_peaks)):
             peak = self.observed_peaks[index]
             peak.pop(1)
@@ -1240,20 +1241,20 @@ class MSRunPeakFinder:
                 ppm = (add_index / 10000 - peak[0]) * 1e6 / peak[0]
                 intensity_values.append(self.by_strength[add_index])
                 ppm_values.append(ppm)
-
-
+    
+    
             ax[x,y].step(ppm_values, intensity_values, where='mid')
             ax[x,y].tick_params(axis='x', labelsize='xx-small')
             ax[x,y].locator_params(axis='x', nbins=5)
             # ax[x,y].set_xticks([-0.0015, -0.0007, 0, 0.0007, 0.0015])
             ax[x,y].tick_params(axis='y', labelsize='xx-small')
             ax[x,y].set_xlim(-15, 15)
-
+    
             # add gaussian fitting
             n = len(ppm_values)
             center = int(n/2)
             binsize = ppm_values[center]-ppm_values[center-1]
-
+    
             try:
             #if 1:
                 popt,pcov = curve_fit(gaussian_function,ppm_values,intensity_values,p0=[intensity_values[center],ppm_values[center],binsize])
@@ -1293,7 +1294,7 @@ class MSRunPeakFinder:
                     count += 1
                 if len(peak) > 11:
                     identified_ion_name += "..."
-
+    
                 peak_fit_center = int(100000*(peak[0] + (popt[1] * peak[0] / 1e6) - crude_correction_mz - spline_correction_mz)) / 100000
                 ax[x,y].text(-14, max(intensity_values) * 1.03, f'peak fit center: \n    {peak_fit_center}\nion m/z: \n    {ion_mz}\nion id: \n    {identified_ion_name}', fontsize='xx-small', ha='left', va='top')
                 ax[x,y].text(14, max(intensity_values) * 1.03, f'{peak[2]}\nof spectra', fontsize='xx-small', ha='right', va='top')
@@ -1318,15 +1319,15 @@ class MSRunPeakFinder:
             self.pdf.savefig(fig) # maybe get rid of fig parameter in here
         self.pdf.close()
         plt.close()
-
+    
     def write_output(self):
         print("starting to write tsv file")
         # Writes out all observed peaks in a TSV file, including the measured mz value from the mass 
         # spectrometer, the intensity, and all the identifications
         # Each identification has the theoretical mass, the delta in mz, and the name of the theoretical ion
-
+    
         output_peaks = self.observed_peaks.copy()
-
+    
         if self.has_correction_spline:
             mz_values = [peak[0] for peak in output_peaks]
             x_values = np.array(mz_values)
@@ -1335,7 +1336,7 @@ class MSRunPeakFinder:
                 y_values_2 = interpolate.BSpline(self.t2, self.c2, self.k2)(x_values)
                 for index in range(len(y_values)):
                     y_values[index] += y_values_2[index]
-
+    
         for index in range(len(output_peaks)):
             peak_mz = output_peaks[index][0]
             correction = (y_values[index] + self.crude_correction) * peak_mz / 1e6
@@ -1343,33 +1344,33 @@ class MSRunPeakFinder:
             for identification_index in range(len(output_peaks[index]) - 4):
                 identification_index += 4
                 output_peaks[index][identification_index][1] = round(output_peaks[index][identification_index][1] * 1e6 / (peak_mz - correction), 2)
-
+    
         output_peaks.insert(0, ['uncorrected m/z', 'corrected m/z', 'intensity', 'percentage of spectra', 'primary identification', 'other identifications'])
         with open(f'{self.peak_file}.tsv', 'w') as file:
         # with open('common_peaks.tsv', 'w') as file:
             writer = csv.writer(file, delimiter='\t', lineterminator='\n')
             writer.writerows(output_peaks)
-
+    
     def show_stats(self):
         # Prints out the stats and how long it took to run the file
         t1 = timeit.default_timer()
         print(f"INFO: Read {self.stats['counter']} spectra from {self.file_name}")
         print(f"The number of ms1spectra is {self.stats['ms1spectra']}")
         print(f"The number of ms2spectra is {self.stats['ms2spectra']}")
-
+    
         print(f"INFO: Elapsed time: {t1-self.t0}")
         print(f"INFO: Processed {self.stats['counter']/(t1-self.t0)} spectra per second")
         return self.stats['ms2spectra']
-
+    
     # Gaussian function used for curve fitting
-
-def gaussian_function(x,a,x0,sigma):
+    
+    def gaussian_function(x,a,x0,sigma):
     # a = amplitude
     # x0 = center point of the gaussian
     # sigma = measure of the width of the gaussian
     return a*exp(-(x-x0)**2/(2*sigma**2))
-
-def get_strength(intensity, smallest_peak_intensity):
+    
+    def get_strength(intensity, smallest_peak_intensity):
     # Returns the strength based on the smallest intensity and a given intensity value
     if intensity <= 3 * smallest_peak_intensity:
         return 1
@@ -1379,14 +1380,14 @@ def get_strength(intensity, smallest_peak_intensity):
         return 3
     else:
         return 4
-
-def process_job(job_parameters):
+    
+    def process_job(job_parameters):
     peak_finder = MSRunPeakFinder(job_parameters["file"], job_parameters["tolerance"], job_parameters["rows"], job_parameters["columns"], job_parameters["make_pdf"], job_parameters["find_snippets"])
     print(f"working on {job_parameters['file']}")
     return peak_finder.process_file()
-
-# put main at the end of the program, define identify peaks method first
-def main():
+    
+    # put main at the end of the program, define identify peaks method first
+    def main():
     argparser = argparse.ArgumentParser(description='An example program that reads an mzML file sequentially')
     argparser.add_argument('--rows', action='store', default=5, type=int, help='Number of rows for graphs')
     argparser.add_argument('--columns', action='store', default=3, type=int, help='Number of columns for output')
@@ -1395,9 +1396,9 @@ def main():
     argparser.add_argument('--make_pdf', action='store', default=False, type=bool, help='Determines if the pdf should be created. Auto assumes False')
     argparser.add_argument('--find_snippets', action='store', default=False, type=bool, help='Determines if the program should search for IH snippets. Auto assumes False')
     argparser.add_argument('files', type=str, nargs='+', help='Filenames of one or more mzML files to read')
-
+    
     params = argparser.parse_args()
-
+    
     for file in params.files:
         file_stats = os.stat(file)
         if file_stats.st_size == 0:
@@ -1416,7 +1417,7 @@ def main():
     jobs = []
     for file in params.files:
         jobs.append({"file": file, "tolerance": params.tolerance, "rows": params.rows, "columns": params.columns, "make_pdf": params.make_pdf, "find_snippets": params.find_snippets})
-
+    
     if len(jobs) == 1:
         process_job(jobs[0])
     else:
@@ -1431,7 +1432,7 @@ def main():
         pool.close()
         pool.join()
         print("")
-
+    
     print(f"Total time to run {len(jobs)} files is {timeit.default_timer() - start_time}")
-
-if __name__ == "__main__": main()
+    
+    if __name__ == "__main__": main()
