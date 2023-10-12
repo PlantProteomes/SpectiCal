@@ -66,7 +66,7 @@ class CombineList:
                         # If there is no histidine, I end this process early and don't consider it
                         # TODO: Remove it in the future
                         # if not has_normalized_ion and primary_identification[0] == "IH":
-                        if not has_normalized_ion and primary_identification[0] == "a(II)":
+                        if not has_normalized_ion and primary_identification[0] == "a{II}":
                             has_normalized_ion = True
                         # elif not has_normalized_ion and mz > 110.1:
                         elif not has_normalized_ion and mz > 199.2:
@@ -110,7 +110,7 @@ class CombineList:
         for file_name in self.file_names:
             for peak in self.aggregated_observed_peaks[file_name]:
                 # if len(peak) > 3 and peak[3][0] == "IH":
-                if len(peak) > 3 and peak[3][0] == "a(II)":
+                if len(peak) > 3 and peak[3][0] == "a{II}":
                     self.normalized_intensity.append(peak[1])
 
         print("finished finding normalized ion")
