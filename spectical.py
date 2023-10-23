@@ -38,9 +38,9 @@ class MSRunPeakFinder:
         self.find_snippets = find_snippets and make_pdf
     
         # Declares all of the variables
-        self.by_count = np.zeros((4000000,), dtype=int)
-        self.by_intensity = np.zeros((4000000,), dtype=float)
-        self.by_strength = np.zeros((4000000,), dtype=int)
+        self.by_count = np.zeros((4000001,), dtype=int)
+        self.by_intensity = np.zeros((4000001,), dtype=float)
+        self.by_strength = np.zeros((4000001,), dtype=int)
         self.all_peaks_intensities = [] # Keeps track of all intensities
         self.triggered_peaks = []
         self.observed_peaks = [] # Keeps track of all peaks over a certain intensities, identified and unidentified
