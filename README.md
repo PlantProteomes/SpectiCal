@@ -1,30 +1,12 @@
 # SpectiCal
 
-In order to run the spectical.py script, it is required to provide an input mzML or gz file.<br>
-The command to run the script is as follows:<br>
-python spectical.py filename.mzML<br>
-Multiple files can be inputted at once as well. Example:<br>
-python spectical.py *.mzML<br>
-Additional commands can be added, such as:<br>
---rows n -> the number of rows in the pdf output. By default, n = 5<br>
---columns n -> the number of columns in the pdf output. By default, n = 3<br>
---tolerance n -> the tolerance for identifying the peak's ppm. By defualt, n = 5<br>
---n_threads n -> the number of threads you want to run the program with. By default, n = number of cores<br>
---make_pdf n -> toggles whether the pdf is generated. By default, n = false<br>
---find_snippets n -> toggles whether the snippets of IH, IF, and IK+CO are collected. By default, n = false<br>
-<br>
-In order to run the combine_list.py script, it is required to include all the tsv files to be combined.<br>
-The command to run the script is as follows:<br>
-python combine_list.py file_one.tsv, file_two.tsv<br>
-You may also choose to filter the TSV file so only the most commonly found ions are included. By default, it will filter the file<br>
-The command is as follows:<br>
-python combine_list.py --filter_tsv True file_one.tsv, file_two.tsv<br>
-<br>
-To run the shift_mzML.py, the input file to be corrected, the name of the new file, and the correction constants are required.<br>
-There are two ways to do this:<br>
-1. provide a constant PPM shift<br>
-The script is as follows:<br>
-python shift_mzML.py --input_filename input.mzML --output_filename input_calibrated.mzML --ppm_shift 5<br>
-2. provide the JSON file generated from spectical.py<br>
-An example script is as follows:<br>
-python shift_mzML.py --input_filename input.mzML --output_filename input_calibrated.mzML --json_filename input.calibration.json<br>
+SpectiCal is a script that computes an m/z calibration based on known low-mass ions, then prints out a PDF displaying the low-mass ions and common peaks in the run.
+
+To run SpectiCal, follow the steps:
+1. Clone the repository - "git clone https://github.com/PlantProteomes/SpectiCal/tree/main"
+2. Install required packages - "pip install -r requirements.txt"
+3. Download the data files to run. Here is a sample 10,000 spectra subset data file of a full run (28 MB) - "curl -O https://peptideatlas.org/refdata/HFX_9850_GVA_DLD1_2_180719_subset.mzML.gz"
+4. Run the data file - "python spectical.py HFX_9850_GVA_DLD1_2_180719_subset.mzML.gz"
+
+Once the data file has been run, you may open the TSV, PDF, and JSON files to view the results of the script.
+For more information about additional metrics and capabilities, please refer to spectical_documentation.md
