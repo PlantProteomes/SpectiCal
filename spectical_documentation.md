@@ -3,16 +3,16 @@
 # Running SpectiCal and Commands
 In order to run the spectical.py script, it is required to provide an input mzML or mzML.gz file.<br>
 The command to run the script is as follows:<br>
-$${\color{red}python spectical.py filename.mzML}$$<br>
+```python spectical.py filename.mzML```<br>
 Multiple files can be inputted at once as well. Example:<br>
-python spectical.py *.mzML<br>
+```python spectical.py *.mzML```<br>
 Additional commands can be added, such as:<br>
---rows n -> the number of rows in the pdf output. By default, n = 5<br>
+```--rows n -> the number of rows in the pdf output. By default, n = 5<br>
 --columns n -> the number of columns in the pdf output. By default, n = 3<br>
 --tolerance n -> the tolerance for identifying the peak's ppm. By defualt, n = 5<br>
 --n_threads n -> the number of threads you want to run the program with. By default, n = number of cores<br>
 --make_pdf n -> toggles whether the pdf is generated. By default, n = false<br>
---find_snippets n -> toggles whether the snippets of IH, IF, and IK+CO are collected. By default, n = false<br>
+--find_snippets n -> toggles whether the snippets of IH, IF, and IK+CO are collected. By default, n = false<br>```
 <be>
 
 # Combining TSV outputs from SpectiCal
