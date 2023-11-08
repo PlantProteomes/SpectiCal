@@ -3,7 +3,7 @@
 # Running SpectiCal and Commands
 In order to run the spectical.py script, it is required to provide an input mzML or mzML.gz file.<br>
 The command to run the script is as follows:<br>
-python spectical.py filename.mzML<br>
+$${\color{red}python spectical.py filename.mzML}$$<br>
 Multiple files can be inputted at once as well. Example:<br>
 python spectical.py *.mzML<br>
 Additional commands can be added, such as:<br>
