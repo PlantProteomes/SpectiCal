@@ -490,6 +490,25 @@ class MSRunPeakFinder:
             self.known_ions[formula] = [mass.calculate_mass(formula=f"{formula}") - self.electron_mass, False]
             # print(self.known_ions[formula])
 
+        # Monosaccharide oxonium ions
+        self.known_ions["HexNAc-frag1"] = [126.05495, False]
+        self.known_ions["Pentose"] = [133.0496, False]
+        self.known_ions["HexNAc-frag2"] = [138.05495, False]
+        self.known_ions["HexNAc-frag3"] = [144.0661, False]
+        self.known_ions["Hexose-H2O"] = [145.04953, False]
+        self.known_ions["Deoxyhexose"] = [147.0652, False]
+        self.known_ions["Hexose"] = [163.0601, False]
+        self.known_ions["HexNAc-2H2O"] = [168.0655, False]
+        self.known_ions["HexNAc-H2O"] = [186.0761, False]
+        self.known_ions["HexNAc"] = [204.08666, False]
+        self.known_ions["Neu5Ac-2H2O"] = [256.08156, False]
+        self.known_ions["Neu5Ac-H2O"] = [274.0921, False]
+        self.known_ions["Neu5Ac"] = [292.1026915, False]   # Also NeuNAc
+        self.known_ions["NeuGc"] = [308.0976, False]
+        self.known_ions["HexHex"] = [325.1129, False]
+        self.known_ions["Oxonium-NH"] = [366.1397, False]
+
+        # TMT related ions
         self.known_ions["TMT126"] = [126.127726, False]
         self.known_ions["TMT127N"] = [127.124761, False]
         self.known_ions["TMT127C"] = [127.131081, False]
@@ -508,7 +527,11 @@ class MSRunPeakFinder:
         self.known_ions["TMT134N"] = [134.148245, False]
         self.known_ions["TMT134C"] = [134.154565, False]
         self.known_ions["TMT135N"] = [135.151600, False]
-        self.known_ions["TMT6Nterm"] = [229.162932 + self.proton_mass, False]
+        self.known_ions["TMT6plex"] = [229.162932 + self.proton_mass, False]
+        self.known_ions["TMT6plex+H2O"] = [229.162932 + 18.010565 + self.proton_mass, False]
+        self.known_ions["TMT6pro"] = [304.207146 + self.proton_mass, False]
+        self.known_ions["TMT6pro+H2O"] = [304.207146 + 18.010565 + self.proton_mass, False]
+        self.known_ions["TMT6pro+NH3"] = [304.207146 + 17.026549 + self.proton_mass, False]
 
         for key in self.known_ions:
             self.known_ions[key][0] = round(self.known_ions[key][0], 5)
