@@ -17,13 +17,20 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class MyMzMLTransformer(MzMLTransformer):
     def __init__(self, input_stream, output_stream, transform=None, transform_description=None,
-                 sort_by_scan_time=False, ppm_shift=None, correction_values=None):
+                 sort_by_scan_time=False, ppm_shift=None, alter_ms_levels=None, correction_values=None):
         super().__init__(input_stream, output_stream, transform=transform, transform_description=transform_description,
                  sort_by_scan_time=sort_by_scan_time)
 
         self.has_spline_correction = False
         self.has_second_spline = False
         self.correction_cache = {}
+
+        self.alter_ms_levels = None
+        if alter_ms_levels is not None:
+            self.alter_ms_levels = alter_ms_levels.split(',')
+            for i in range(len(self.alter_ms_levels)):
+                self.alter_ms_levels[i] = int(self.alter_ms_levels[i])
+
         if ppm_shift is not None:
             self.ppm_shift = float(ppm_shift)
         else:
@@ -88,6 +95,7 @@ def main():
     argparser.add_argument('--input_filename', type=str, action='store', required=True, help='Name of the input mzML file')
     argparser.add_argument('--output_filename', type=str, action='store', required=True, help='Name of the output mzML file shifted m/zs')
     argparser.add_argument('--ppm_shift', type=str, action='store', help='Offset to shift all spectra in units of PPM')
+    argparser.add_argument('--mslevels', type=str, action='store', help='MS Levels to shift, comma separated (e.g. 1 or 2 or 2,3)')
     argparser.add_argument('--json_filename', type=str, action='store', help='Name of the json file with calibration values')
     params = argparser.parse_args()
 
@@ -121,13 +129,17 @@ def main():
         print(f"ERROR: --output_filename '{params.output_filename}' is not writable. Permissions problem?")
         return
     
+    selected_spectra = 'all'
+    if params.mslevels is not None:
+        selected_spectra = params.mslevels
+
     # Determines if json file is used or ppm shift value
     if params.json_filename is None or params.json_filename == "":
         if params.ppm_shift is None:
             print("ERROR: --json_filename and --ppm_shift were not found")
             return
-        MyMzMLTransformer(infile, outfile, ppm_shift=params.ppm_shift,
-            transform_description=f"Shifted all spectra by {params.ppm_shift}").write()
+        MyMzMLTransformer(infile, outfile, ppm_shift=params.ppm_shift, alter_ms_levels=params.mslevels,
+            transform_description=f"Shifted {selected_spectra} spectra by {params.ppm_shift}").write()
     else:
         if not os.path.isfile(params.json_filename):
             print(f"ERROR: --json_filename '{params.json_filename}' not found or not a file")
@@ -135,8 +147,8 @@ def main():
             
         correction_file = open(f'{params.json_filename}')
         correction_values = json.load(correction_file)
-        MyMzMLTransformer(infile, outfile, correction_values=correction_values, 
-            transform_description=f"Shifted all spectra by values {correction_values['crude correction']} and spline fit").write()
+        MyMzMLTransformer(infile, outfile, correction_values=correction_values, alter_ms_levels=params.mslevels,
+            transform_description=f"Shifted {selected_spectra} spectra by values {correction_values['crude correction']} and spline fit").write()
 
 #### For command line usage
 if __name__ == "__main__": main()
