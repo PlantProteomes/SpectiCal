@@ -935,6 +935,12 @@ class MSRunPeakFinder:
         index_increment = (500 - index) / num_of_artificial_peaks
         artificial_peak_intensity = np.median(artificial_peak_range)
         self.after_400_calibration = np.median(artificial_peak_range)
+
+        #### Added EWD 2024-02-21: if the median is NaN, then assume 0.0
+        if np.isnan(self.after_400_calibration):
+            self.after_400_calibration = 0.0
+            artificial_peak_intensity = 0.0
+
         if self.make_pdf:
             self.ax[1][0].axhline(y = 0, color = 'k', linewidth = 1, linestyle = '-')
             self.ax[1][0].set(xlabel='m/z', ylabel='PPM')
@@ -991,7 +997,11 @@ class MSRunPeakFinder:
             if peak[0] >= 300 and peak[0] <= 400:
                 artificial_peak_range.append(peak[1]) 
 
-        self.after_400_calibration += np.median(artificial_peak_range)
+        #### Added EWD 2024-02-21: if the median is NaN, then assume 0.0
+        median_value = np.median(artificial_peak_range)
+        if np.isnan(median_value):
+            median_value = 0.0
+        self.after_400_calibration += median_value
         
         # create the spline
         try:
@@ -1072,6 +1082,7 @@ class MSRunPeakFinder:
             return
         
         acid_mz = {'IH': 110.07127, 'IF': 120.08078, 'IK-CO': 129.10223}
+        #acid_mz = {'IH': 110.07127, 'IF': 120.08078, 'TMT126': 126.12773}
         close_matches = []
 
         # Creates enough elements to store all the scan numbers, delta PPM, and intensities in one
@@ -1089,7 +1100,7 @@ class MSRunPeakFinder:
                 closest_index = 0
                 largest_intensity = 0
                 mz = acid_mz[key]
-                tolerance = 5 * mz / 1e6
+                tolerance = 10 * mz / 1e6
                 upper_bound = mz + tolerance
                 lower_bound = mz - tolerance
                 # snippet[0] is the scan number, snippet[1] is the range of mz and snippet[2] 
@@ -1265,6 +1276,9 @@ class MSRunPeakFinder:
             for range_index in range(mz_delta * 2 + 1):
                 # change it to be 0
                 add_index = int((peak[0]) * 10000 + range_index - mz_delta)
+                #### EWD: added 2024-02-13 after seeing error "IndexError: index 4008904 is out of bounds for axis 0 with size 4000001" 5 lines below this
+                if add_index > 4000000:
+                    add_index = 4000000
                 # mz_values.append(add_index / 10000 - peak[0])
                 ppm = (add_index / 10000 - peak[0]) * 1e6 / peak[0]
                 intensity_values.append(self.by_strength[add_index])
