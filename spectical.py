@@ -483,6 +483,7 @@ class MSRunPeakFinder:
             'C6H4N5O4',
             'C6H6N5O4',
             'C4N11O2',
+            'C6H5O2',
             "H4PO4"
         ]
 
