@@ -37,6 +37,10 @@ class MSRunPeakFinder:
         self.make_pdf = make_pdf
         self.find_snippets = find_snippets and make_pdf
 
+        self.t = 0
+        self.c = []
+        self.k = 2
+
         # Declares all of the variables
         self.by_count = np.zeros((4000001,), dtype=int)
         self.by_intensity = np.zeros((4000001,), dtype=float)
@@ -1058,6 +1062,9 @@ class MSRunPeakFinder:
         self.ax[2][0].set(xlabel='m/z', ylabel='PPM')
 
     def plot_all_corrections(self):
+        if self.t == 0:
+            y_values = None
+            return
         x_values = np.arange(self.refined_mz_values[0], self.refined_mz_values[-1])
         
         y_values = interpolate.BSpline(self.t, self.c, self.k)(x_values)
@@ -1382,7 +1389,10 @@ class MSRunPeakFinder:
 
         for index in range(len(output_peaks)):
             peak_mz = output_peaks[index][0]
-            correction = (y_values[index] + self.crude_correction) * peak_mz / 1e6
+            try:
+                correction = (y_values[index] + self.crude_correction) * peak_mz / 1e6
+            except:
+                correction = 0.0
             output_peaks[index].insert(1, round(peak_mz - correction, 5))
             for identification_index in range(len(output_peaks[index]) - 4):
                 identification_index += 4
