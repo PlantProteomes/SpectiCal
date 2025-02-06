@@ -1062,7 +1062,7 @@ class MSRunPeakFinder:
         self.ax[2][0].set(xlabel='m/z', ylabel='PPM')
 
     def plot_all_corrections(self):
-        if self.t == 0:
+        if not isinstance(self.t,list) and len(self.t) == 0:
             y_values = None
             return
         x_values = np.arange(self.refined_mz_values[0], self.refined_mz_values[-1])
