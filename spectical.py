@@ -495,6 +495,22 @@ class MSRunPeakFinder:
             self.known_ions[formula] = [mass.calculate_mass(formula=f"{formula}") - self.electron_mass, False]
             # print(self.known_ions[formula])
 
+        # Nucleoside ions ions
+        self.known_ions["Cytosine"] = [112.050538, False]
+        self.known_ions["Adenine"] = [136.061772, False]
+        self.known_ions["Guanine"] = [152.056686, False]
+        self.known_ions["Uracil"] = [113.034554, False]
+        self.known_ions["Thymine"] = [127.050204, False]
+        self.known_ions["UrocanicAcid"] = [139.050204, False]
+        self.known_ions["Xanthine"] = [153.040702, False]
+        self.known_ions["Cytosine+C5H7O6P"] = [306.04856, False]
+        self.known_ions["Cytosine+C5H7O6P-H2O"] = [288.037998, False]
+        self.known_ions["Adenine+C5H7O6P"] = [330.059797, False]
+        self.known_ions["Adenine+C5H7O6P-H2O"] = [312.04923, False]
+        self.known_ions["Guanine+C5H7O6P"] = [346.054711025, False]
+        self.known_ions["Guanine+C5H7O6P-H2O"] = [328.044146, False]
+        self.known_ions["Adenosine-H2O"] = [250.093, False]
+
         # Monosaccharide oxonium ions
         self.known_ions["HexNAc-frag1"] = [126.05495, False]
         self.known_ions["Pentose"] = [133.0496, False]
