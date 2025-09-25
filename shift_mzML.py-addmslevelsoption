@@ -152,13 +152,17 @@ def main():
         print(f"ERROR: --output_filename '{params.output_filename}' is not writable. Permissions problem?")
         return
     
+    selected_spectra = 'all'
+    if params.mslevels is not None:
+        selected_spectra = params.mslevels
+
     # Determines if json file is used or ppm shift value
     if params.json_filename is None or params.json_filename == "":
         if params.ppm_shift is None:
             print("ERROR: --json_filename and --ppm_shift were not found")
             return
-        MyMzMLTransformer(infile, outfile, ppm_shift=params.ppm_shift, mslevels=params.mslevels,
-            transform_description=f"Shifted all spectra by {params.ppm_shift}").write()
+        MyMzMLTransformer(infile, outfile, ppm_shift=params.ppm_shift, alter_ms_levels=params.mslevels,
+            transform_description=f"Shifted {selected_spectra} spectra by {params.ppm_shift}").write()
     else:
         if not os.path.isfile(params.json_filename):
             print(f"ERROR: --json_filename '{params.json_filename}' not found or not a file")
@@ -166,8 +170,8 @@ def main():
             
         correction_file = open(f'{params.json_filename}')
         correction_values = json.load(correction_file)
-        MyMzMLTransformer(infile, outfile, correction_values=correction_values, mslevels=params.mslevels,
-            transform_description=f"Shifted all spectra by values {correction_values['crude correction']} and spline fit").write()
+        MyMzMLTransformer(infile, outfile, correction_values=correction_values, alter_ms_levels=params.mslevels,
+            transform_description=f"Shifted {selected_spectra} spectra by values {correction_values['crude correction']} and spline fit").write()
 
 #### For command line usage
 if __name__ == "__main__": main()
