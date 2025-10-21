@@ -50,22 +50,41 @@ class MyMzMLTransformer(MzMLTransformer):
     def format_spectrum(self, spectrum):
         new_spectrum = super().format_spectrum(spectrum)
 
-        #### Shift all the m/z values
-        vfunc = np.vectorize(self.correct_mz)
-        new_spectrum['mz_array'] = vfunc(new_spectrum['mz_array'])
-
         #### Get the MS level
         ms_level = None
         for param in new_spectrum['params']:
             if param['name'] == 'MS:1000511':
                 ms_level = param['value']
 
+        #### If there is no ms_level and the user requested specific MS levels, skip
+        if ms_level is None and self.alter_ms_levels is not None:
+            return spectrum
+
         #### Correct the precursor m/z values by the requested shift
-        if ms_level is not None and ms_level > 1:
-            precursor_mz = new_spectrum['precursor_information'][0]['mz']
-            new_spectrum['precursor_information'][0]['mz'] = self.correct_mz(precursor_mz)
+        apply_correction = False
+        if ms_level is not None:
+            if ms_level == 1:
+                if self.alter_ms_levels is None or 1 in self.alter_ms_levels:
+                    apply_correction = True
+
+            if ms_level == 0:
+                if self.alter_ms_levels is None or 0 in self.alter_ms_levels:
+                    apply_correction = True
+
+            if ms_level > 1:
+                if self.alter_ms_levels is None or 1 in self.alter_ms_levels:
+                    precursor_mz = new_spectrum['precursor_information'][0]['mz']
+                    new_spectrum['precursor_information'][0]['mz'] = self.correct_mz(precursor_mz)
+                if self.alter_ms_levels is None or ms_level in self.alter_ms_levels:
+                    apply_correction = True
+
+        #### Shift all the m/z values
+        if apply_correction:
+            vfunc = np.vectorize(self.correct_mz)
+            new_spectrum['mz_array'] = vfunc(new_spectrum['mz_array'])
 
         return new_spectrum
+
 
     def correct_mz(self, input_mz):
         int_input_mz = int(input_mz)
